@@ -1,55 +1,66 @@
-// Ссылка на твою таблицу
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTFT7EtIWvXIkbVnefj58KhAhTumPu3DvjWc3EuNcc8iLfDTvo3nYK9WLu6LH1evgxwyOVJPuy9a_aA/pub?output=csv';
 
 let products = [];
 
-// Функция для загрузки данных из Google Таблицы
 async function fetchProducts() {
     try {
         const response = await fetch(SHEET_URL);
         const data = await response.text();
         
-        // Разбиваем CSV на строки и преобразуем в массив объектов
-        const rows = data.split('\n').map(row => row.split(','));
-        const headers = rows[0]; // Первая строка - это заголовки
+        const rows = data.split(/\r?\n/).filter(row => row.trim() !== "");
         
-        products = rows.slice(1).map(cols => {
-            if (cols.length < 2) return null; // Пропускаем пустые строки
+        products = rows.slice(1).map(row => {
+            const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            if (cols.length < 5) return null;
             return {
-                id: parseInt(cols[0]),
-                name: cols[1]?.trim(),
-                category: cols[2]?.trim(), // Тут будет 'ətir', 'qram' или 'mystery'
-                price: parseFloat(cols[3]),
-                oldPrice: parseFloat(cols[4]),
-                gender: cols[5]?.trim(),
-                img: cols[6]?.trim(),
-                mystery: cols[7]?.trim().toUpperCase() === 'TRUE'
+                id: parseInt(cols[0]?.replace(/"/g, '')),
+                name: cols[1]?.replace(/"/g, '').trim(),
+                category: cols[2]?.replace(/"/g, '').trim(),
+                price: parseFloat(cols[3]?.replace(/"/g, '')),
+                oldPrice: parseFloat(cols[4]?.replace(/"/g, '')),
+                gender: cols[5]?.replace(/"/g, '').trim(),
+                img: cols[6]?.replace(/"/g, '').trim(),
+                mystery: cols[7]?.replace(/"/g, '').trim().toUpperCase() === 'TRUE'
             };
         }).filter(item => item !== null && item.name);
 
         console.log("Товары загружены:", products);
-        
-        // После загрузки запускаем отображение сайта
         initApp();
 
     } catch (error) {
-        console.error("Ошибка загрузки данных из таблицы:", error);
+        console.error("Ошибка загрузки данных:", error);
     }
 }
 
-// Функция запуска функций сайта после загрузки данных
 function initApp() {
-    renderProducts();
+    // Вызываем фильтр "all", чтобы отобразить все товары сразу
+    filterProducts('all'); 
+    
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
     }
 }
 
-// Запускаем загрузку
-fetchProducts();
+// Заменяем вашу функцию filterProducts или добавляем её, если её нет
+function filterProducts(category) {
+    let filtered;
+    if (category === 'all') {
+        filtered = products;
+    } else {
+        filtered = products.filter(p => p.category === category || p.gender === category);
+    }
+    
+    // Передаем отфильтрованные данные в render
+    renderProducts(filtered);
+    
+    // Подсветка активной кнопки
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('onclick')?.includes(`'${category}'`));
+    });
+}
 
-// --- ДАЛЕЕ ОСТАВЬ ВЕСЬ ОСТАЛЬНОЙ СВОЙ КОД БЕЗ ИЗМЕНЕНИЙ ---
-// (Функции renderProducts, addToCart, filterProducts и т.д.)
+// Запуск при загрузке страницы
+document.addEventListener('DOMContentLoaded', fetchProducts);
 
 const faqs = [
     { q: "Mystery Box (Sirli Qutu) nədir??", a:"Bu sürpriz bir qutudur. Siz 40 AZN ödəyirsiniz, lakin qutunun içindən hər şey çıxa bilər, minimum 10 AZN, maksimum 70 AZN və daha çox olan ətir və ya bədən spreyi çıxır. Bu, şansını yoxlamağı sevənlər üçün əla seçimdir!" },
@@ -124,6 +135,19 @@ function renderProducts(data) {
     grid.innerHTML = data.map(p => {
         const initialSeconds = ((p.id * 7919) % 28800) + 7200; 
         const viewers = 10 + Math.floor(Math.random() * 25);
+
+// Стало (добавьте = products):
+function renderProducts(data = products) { 
+    const container = document.getElementById('products-grid');
+    if (!container) return; // Защита от ошибки, если контейнер не найден
+    
+    container.innerHTML = '';
+    
+    // Теперь .map или .forEach не выдаст ошибку
+    data.forEach(product => {
+        // ... ваш код отрисовки карточки ...
+    });
+}
         
         return `
         <div class="product-card p-4 rounded-3xl relative overflow-hidden group">
@@ -471,5 +495,4 @@ window.addEventListener('load', () => {
     setInterval(() => showCenterPopup('delivery'), 240000);
     setInterval(() => showCenterPopup('stock'), 150000);
 });
-
 
